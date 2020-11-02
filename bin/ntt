@@ -1,0 +1,153 @@
+#! /bin/sh -
+#
+# Copyright (C) 2020  Nicolas Ivan Hamblenne
+
+set -e
+
+usage() {
+    printf "Usage: ntt [-s] [-d dir] [-n name] prog\n"
+}
+
+help() {
+    usage
+}
+
+checkarg() {
+    if [ -z "$2" ] ; then
+       printf "%s: argument expected\n" "$1"
+       exit 1
+    fi
+}
+
+compare() {
+    if ! [ -f "$1" ] ; then
+        if [ -s "$2" ] ; then
+            cp "$2" "${2%.log}".diff
+            status=1
+        else
+            rm "$2"
+        fi
+    elif cmp -s "$1" "$2" ; then
+        rm "$2"
+    else
+        diff -u "$1" "$2" > "${2%.log}".diff || true
+        status=1
+    fi
+}
+
+# Parse options
+quiet=false
+verbose=false
+cnt=0
+argc=$#
+while [ $cnt -ne $argc ] ; do
+    case $1 in
+        -h|--help)
+            help >&2
+            exit 0
+            ;;
+        -d)
+            checkarg "$1" "${2+set}"
+            shift
+            cnt=$((cnt + 1))
+            dir=$1
+            ;;
+        -n)
+            checkarg "$1" "${2+set}"
+            shift
+            cnt=$((cnt + 1))
+            name=$1
+            ;;
+        -q)
+            quiet=true
+            verbose=false
+            ;;
+        -v)
+            quiet=false
+            verbose=true
+            ;;
+        --)
+            shift
+            cnt=$((cnt + 1))
+            break
+            ;;
+        -*)
+            usage >&2
+            exit 1
+            ;;
+        *)
+            set -- "$@" "$1"
+            ;;
+    esac
+    shift
+    cnt=$((cnt + 1))
+done
+
+while [ $cnt -ne $argc ] ; do
+    set -- "$@" "$1"
+    shift
+    cnt=$((cnt + 1))
+done
+
+# Parse positional arguments
+case $# in
+    1)
+        progpath=$1
+        ;;
+    *)
+        help >&2
+        exit 1
+        ;;
+esac
+
+progdir=$(dirname "$progpath")
+progname=$(basename "$progpath")
+progbase=${progname%.*}
+
+: ${name=$progbase}
+: ${dir=.}
+
+if [ -f "$dir/$name".in ] ; then
+    input="$dir/$name".in
+else
+    input=/dev/null
+fi
+
+if ! [ -x "$progpath" ] ; then
+    printf "%s is not executable." "$progpath" >&2
+    exit 1
+fi
+
+[ -f "$name".out.diff ] && rm "$name".out.diff
+[ -f "$name".err.diff ] && rm "$name".err.diff
+
+if ! "$progpath" < "$input" > "$name".out.log 2> "$name".err.log ; then
+    printf "status %s\n" $? >> "$name".err.log
+fi
+
+status=0
+
+compare "$dir/$name".out "$name".out.log
+compare "$dir/$name".err "$name".err.log
+
+if [ $status != 0 ] && $verbose ; then
+    if [ -s "$name".out.diff ] ; then
+        printf "\n$name standard output diff\n\n"
+        cat "$name".out.diff
+    fi
+    if [ -s "$name".err.diff ] ; then
+        printf "\n$name standard error diff\n\n"
+        cat "$name".err.diff
+    fi
+    
+fi
+
+if ! $quiet ; then
+    if [ $status = 0 ] ; then
+        printf "%s PASSED\n" "$name"
+    else
+        printf "%s FAILED\n" "$name"
+    fi
+fi
+
+exit $status
