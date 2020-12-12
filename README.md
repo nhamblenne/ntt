@@ -19,4 +19,4 @@ line of `prog.err` must be something like
 `ntt` accepts some arguments:
 
 - `-d <dir>` will look for `prog.in`, `prog.out` and `prog.err` in `<dir>`.
-- `-n name` will use name.in, name.out and name.err for files.
+- `-n name` will use `name.in`, `name.out` and `name.err` for files.

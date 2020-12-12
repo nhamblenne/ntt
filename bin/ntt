@@ -5,7 +5,7 @@
 set -e
 
 usage() {
-    printf "Usage: ntt [-s] [-d dir] [-n name] prog\n"
+    printf "Usage: ntt [-s|-v] [-d dir] [-n name] prog\n"
 }
 
 help() {
@@ -22,6 +22,9 @@ checkarg() {
 compare() {
     if ! [ -f "$1" ] ; then
         if [ -s "$2" ] ; then
+            if $verbose ; then
+                printf "%s do not exist and output was generated.\n" "$1"
+            fi
             cp "$2" "${2%.log}".diff
             status=1
         else
