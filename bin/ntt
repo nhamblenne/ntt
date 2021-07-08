@@ -93,16 +93,13 @@ while [ $cnt -ne $argc ] ; do
 done
 
 # Parse positional arguments
-case $# in
-    1)
-        progpath=$1
-        ;;
-    *)
+if [ $# -lt 1 ] ; then
         help >&2
         exit 1
-        ;;
-esac
-
+fi
+progpath=$1
+shift
+        
 progdir=$(dirname "$progpath")
 progname=$(basename "$progpath")
 progbase=${progname%.*}
@@ -124,7 +121,7 @@ fi
 [ -f "$name".out.diff ] && rm "$name".out.diff
 [ -f "$name".err.diff ] && rm "$name".err.diff
 
-if ! "$progpath" < "$input" > "$name".out.log 2> "$name".err.log ; then
+if ! "$progpath" "$@" < "$input" > "$name".out.log 2> "$name".err.log ; then
     printf "status %s\n" $? >> "$name".err.log
 fi
 
